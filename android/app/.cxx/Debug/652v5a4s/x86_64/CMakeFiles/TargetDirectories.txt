@@ -1,0 +1,2 @@
+C:/DOCUMENT/FLUTER/smart_farm/android/app/.cxx/Debug/652v5a4s/x86_64/CMakeFiles/edit_cache.dir
+C:/DOCUMENT/FLUTER/smart_farm/android/app/.cxx/Debug/652v5a4s/x86_64/CMakeFiles/rebuild_cache.dir

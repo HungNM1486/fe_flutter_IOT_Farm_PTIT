@@ -1,0 +1,1 @@
+/home/hungnm/projects/iot/SmartFarm/build/app/intermediates/cxx/Debug/p402i1u3/obj/arm64-v8a

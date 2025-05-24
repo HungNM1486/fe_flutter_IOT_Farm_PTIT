@@ -1,0 +1,2 @@
+C:/DOCUMENT/FLUTER/smart_farm/android/app/.cxx/RelWithDebInfo/p1r45491/x86/CMakeFiles/edit_cache.dir
+C:/DOCUMENT/FLUTER/smart_farm/android/app/.cxx/RelWithDebInfo/p1r45491/x86/CMakeFiles/rebuild_cache.dir

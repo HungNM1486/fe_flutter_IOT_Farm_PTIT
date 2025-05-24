@@ -1,0 +1,2 @@
+/home/hungnm/projects/SmartFarm/android/app/.cxx/Debug/5x616d24/x86_64/CMakeFiles/edit_cache.dir
+/home/hungnm/projects/SmartFarm/android/app/.cxx/Debug/5x616d24/x86_64/CMakeFiles/rebuild_cache.dir

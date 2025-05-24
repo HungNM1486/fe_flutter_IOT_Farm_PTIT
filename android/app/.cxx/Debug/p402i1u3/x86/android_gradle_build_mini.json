@@ -1,0 +1,20 @@
+{
+  "buildFiles": [
+    "/home/hungnm/development/flutter/packages/flutter_tools/gradle/src/main/groovy/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/home/hungnm/development/android/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/home/hungnm/projects/iot/SmartFarm/android/app/.cxx/Debug/p402i1u3/x86",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/home/hungnm/development/android/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/home/hungnm/projects/iot/SmartFarm/android/app/.cxx/Debug/p402i1u3/x86",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {}
+}
