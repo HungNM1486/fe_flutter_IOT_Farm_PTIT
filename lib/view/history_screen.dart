@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smart_farm/utils/base_url.dart';
 import 'package:smart_farm/view/detail_plant.dart';
+import 'package:smart_farm/widget/bottom_bar.dart';
 import 'package:smart_farm/widget/top_bar.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -96,6 +97,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 },
               ),
             ),
+          ),
+          const Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Bottombar(type: 3),
           ),
         ],
       ),

@@ -5,9 +5,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_farm/provider/auth_provider.dart';
 import 'package:smart_farm/utils/base_url.dart';
+import 'package:smart_farm/view/alert_screen.dart';
+import 'package:smart_farm/view/camera_control_screen.dart';
 import 'package:smart_farm/widget/bottom_bar.dart';
 import 'package:smart_farm/widget/network_img.dart';
 import 'package:smart_farm/widget/top_bar.dart';
+import 'package:smart_farm/theme/app_colors.dart';
 
 class SettingScreen extends StatefulWidget {
   const SettingScreen({Key? key}) : super(key: key);
@@ -19,17 +22,14 @@ class SettingScreen extends StatefulWidget {
 class _SettingScreenState extends State<SettingScreen>
     with TickerProviderStateMixin {
   final _baseUrl = BaseUrl.baseUrl;
-  String selectedLanguage = 'Tiếng Việt'; // Ngôn ngữ mặc định
-  bool weatherNotification = true; // Thông báo thời tiết
-  bool careNotification = true; // Thông báo kế hoạch chăm sóc
-  bool isDarkMode = false; // Chế độ tối
   XFile? image;
-  final ImagePicker _picker = ImagePicker(); // Define the ImagePicker instance
+  final ImagePicker _picker = ImagePicker();
   TextEditingController nameController = TextEditingController();
 
-  final List<String> languageOptions = ['Tiếng Việt', 'Tiếng Anh'];
   late AnimationController _controller;
   late Animation<double> _animation;
+
+  @override
   void initState() {
     super.initState();
     _controller = AnimationController(
@@ -41,9 +41,13 @@ class _SettingScreenState extends State<SettingScreen>
       curve: Curves.easeInOut,
     );
     _controller.forward();
+  }
 
-    // Initialize data after widget is built
-    WidgetsBinding.instance.addPostFrameCallback((_) {});
+  @override
+  void dispose() {
+    _controller.dispose();
+    nameController.dispose();
+    super.dispose();
   }
 
   Future<void> _pickImage(StateSetter setDialogState) async {
@@ -138,46 +142,38 @@ class _SettingScreenState extends State<SettingScreen>
             top: 70 * pix,
             left: 0,
             right: 0,
-            bottom: 0,
+            bottom: 70 * pix,
             child: Container(
-              width: size.width,
-              height: size.height - 100 * pix,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xff47BFDF), Color(0xff4A91FF)],
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
+              decoration: BoxDecoration(
+                gradient: AppColors.backgroundGradient,
+              ),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(16 * pix),
+                child: Column(
+                  children: [
+                    SizedBox(height: 20 * pix),
+
+                    // Profile Section
+                    _buildProfileSection(pix),
+                    SizedBox(height: 20 * pix),
+
+                    // System Settings Section
+                    _buildSystemSection(pix),
+                    SizedBox(height: 20 * pix),
+
+                    // App Info Section
+                    _buildAppInfoSection(pix),
+                    SizedBox(height: 20 * pix),
+
+                    // Logout Button
+                    _buildLogoutButton(pix),
+                  ],
                 ),
               ),
             ),
           ),
 
-          // Main content
-          Positioned(
-            top: 120 * pix,
-            left: 16 * pix,
-            right: 16 * pix,
-            bottom: 16 * pix,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSection(
-                    title: 'Thông tin cá nhân ',
-                    child: _buildProfileSelector(pix),
-                    pix: pix,
-                  ),
-                  SizedBox(height: 20 * pix),
-                  _buildSection(
-                    title: 'Thông tin ứng dụng',
-                    child: _buildAppInfo(pix),
-                    pix: pix,
-                  ),
-                  SizedBox(height: 80 * pix),
-                ],
-              ),
-            ),
-          ),
+          // Bottom Bar
           Positioned(
             bottom: 0,
             left: 0,
@@ -198,192 +194,133 @@ class _SettingScreenState extends State<SettingScreen>
     );
   }
 
-  Widget _buildProfileSelector(double pix) {
-    return Consumer<AuthProvider>(builder: (context, userProvider, child) {
-      if (userProvider.loading) {
-        return Center(
-          child: CircularProgressIndicator(),
-        );
-      }
-      final user = userProvider.user;
-      return Padding(
-        padding: EdgeInsets.all(16 * pix),
-        child: Row(
-          children: [
-            user?.avatar != ""
-                ? ClipOval(
-                    child: NetworkImageWidget(
-                      url: "${_baseUrl}${user?.avatar}" ?? "",
-                      width: 80 * pix,
-                      height: 80 * pix,
-                    ),
-                  )
-                : CircleAvatar(
-                    radius: 40 * pix,
-                    backgroundColor: Colors.grey[300],
-                    child: Icon(
-                      Icons.person,
-                      size: 40 * pix,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-            SizedBox(width: 16 * pix),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    user?.username ?? "Người dùng",
-                    style: TextStyle(
-                      fontSize: 18 * pix,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'BeVietnamPro',
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: 4 * pix),
-                  Text(
-                    user?.email ?? "Chưa có email",
-                    style: TextStyle(
-                      fontSize: 14 * pix,
-                      color: Colors.grey[600],
-                      fontFamily: 'BeVietnamPro',
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+  Widget _buildProfileSection(double pix) {
+    return Consumer<AuthProvider>(
+      builder: (context, userProvider, child) {
+        if (userProvider.loading) {
+          return Center(child: CircularProgressIndicator());
+        }
+
+        final user = userProvider.user;
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16 * pix),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 15,
+                offset: Offset(0, 5),
               ),
-            ),
-            SizedBox(width: 16 * pix),
-            IconButton(
-              icon: Icon(
-                Icons.edit,
-                size: 24 * pix,
-                color: Colors.blue,
-              ),
-              onPressed: () {
-                setState(() {
-                  image = null; // Reset image khi mở dialog
-                  nameController.text = "";
-                });
-                showDialog(
-                  context: context,
-                  builder: (context) {
-                    return StatefulBuilder(
-                      builder: (context, setDialogState) {
-                        return AlertDialog(
-                          title: Text(
-                            'Chỉnh sửa thông tin cá nhân',
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(20 * pix),
+            child: Column(
+              children: [
+                // Avatar and basic info
+                Row(
+                  children: [
+                    Stack(
+                      children: [
+                        user?.avatar != ""
+                            ? ClipOval(
+                                child: NetworkImageWidget(
+                                  url: "${_baseUrl}${user?.avatar}" ?? "",
+                                  width: 70,
+                                  height: 70,
+                                ),
+                              )
+                            : CircleAvatar(
+                                radius: 35 * pix,
+                                backgroundColor:
+                                    AppColors.primaryGreen.withOpacity(0.1),
+                                child: Icon(
+                                  Icons.person,
+                                  size: 35 * pix,
+                                  color: AppColors.primaryGreen,
+                                ),
+                              ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: EdgeInsets.all(4 * pix),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryGreen,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: Icon(
+                              Icons.edit,
+                              size: 12 * pix,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(width: 16 * pix),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user?.username ?? "Người dùng",
                             style: TextStyle(
-                              fontSize: 18 * pix,
+                              fontSize: 20 * pix,
                               fontWeight: FontWeight.bold,
+                              fontFamily: 'BeVietnamPro',
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                          SizedBox(height: 4 * pix),
+                          Text(
+                            user?.email ?? "Chưa có email",
+                            style: TextStyle(
+                              fontSize: 14 * pix,
+                              color: AppColors.textGrey,
                               fontFamily: 'BeVietnamPro',
                             ),
                           ),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              InkWell(
-                                onTap: () {
-                                  _pickImage(setDialogState);
-                                },
-                                child: CircleAvatar(
-                                  radius: 40 * pix,
-                                  backgroundColor: Colors.grey[300],
-                                  child: image != null
-                                      ? ClipOval(
-                                          child: Image.file(
-                                            File(image!.path),
-                                            width: 80 * pix,
-                                            height: 80 * pix,
-                                            fit: BoxFit.cover,
-                                          ),
-                                        )
-                                      : (user?.avatar != "" &&
-                                              user?.avatar != null
-                                          ? ClipOval(
-                                              child: NetworkImageWidget(
-                                                url:
-                                                    "${_baseUrl}${user?.avatar}" ??
-                                                        "",
-                                                width: 80 * pix,
-                                                height: 80 * pix,
-                                              ),
-                                            )
-                                          : Container(
-                                              width: 80 * pix,
-                                              height: 80 * pix,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: Colors.grey[300],
-                                              ),
-                                              child: Icon(
-                                                Icons.camera_alt,
-                                                size: 40 * pix,
-                                                color: Colors.grey[600],
-                                              ),
-                                            )),
-                                ),
-                              ),
-                              SizedBox(height: 16 * pix),
-                              TextField(
-                                controller: nameController,
-                                decoration: InputDecoration(
-                                  labelText: 'Tên người dùng',
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            ],
-                          ),
-                          actions: [
-                            Row(
-                              children: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: Text('Đóng'),
-                                ),
-                                SizedBox(width: 8 * pix),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    _updateProfile();
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.blue,
-                                  ),
-                                  child: Text(
-                                    'Lưu',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                );
-              },
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Container(
+                        padding: EdgeInsets.all(8 * pix),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGreen.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8 * pix),
+                        ),
+                        child: Icon(
+                          Icons.edit,
+                          size: 20 * pix,
+                          color: AppColors.primaryGreen,
+                        ),
+                      ),
+                      onPressed: () => _showEditProfileDialog(),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
-      );
-    });
+          ),
+        );
+      },
+    );
   }
 
-  Widget _buildSection({
-    required String title,
-    required Widget child,
-    required double pix,
-  }) {
+  Widget _buildSystemSection(double pix) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16 * pix),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 15,
             offset: Offset(0, 5),
           ),
         ],
@@ -392,75 +329,263 @@ class _SettingScreenState extends State<SettingScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: EdgeInsets.all(16 * pix),
+            padding: EdgeInsets.all(20 * pix),
             child: Text(
-              title,
+              'Hệ thống',
               style: TextStyle(
                 fontSize: 18 * pix,
                 fontWeight: FontWeight.bold,
                 fontFamily: 'BeVietnamPro',
+                color: AppColors.textDark,
               ),
             ),
           ),
-          Divider(height: 1, thickness: 1, color: Colors.grey.withOpacity(0.2)),
-          child,
+          Divider(height: 1, color: AppColors.borderGrey),
+          _buildSettingItem(
+            pix,
+            icon: Icons.notifications_active,
+            iconColor: Colors.orange,
+            title: 'Cài đặt cảnh báo',
+            subtitle: 'Ngưỡng cảnh báo cảm biến',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AlertSettingsScreen(),
+                ),
+              );
+            },
+          ),
+          Divider(height: 1, color: AppColors.borderGrey),
+          _buildSettingItem(
+            pix,
+            icon: Icons.camera_alt,
+            iconColor: Colors.green,
+            title: 'Camera ESP32-CAM',
+            subtitle: 'Điều khiển camera, chụp ảnh',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CameraControlScreen()),
+              );
+            },
+          ),
+          Divider(height: 1, color: AppColors.borderGrey),
+          _buildSettingItem(
+            pix,
+            icon: Icons.language,
+            iconColor: Colors.blue,
+            title: 'Ngôn ngữ',
+            subtitle: 'Tiếng Việt',
+            onTap: () {
+              // TODO: Language settings
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Tính năng đang phát triển')),
+              );
+            },
+          ),
+          Divider(height: 1, color: AppColors.borderGrey),
+          _buildSettingItem(
+            pix,
+            icon: Icons.security,
+            iconColor: Colors.purple,
+            title: 'Bảo mật',
+            subtitle: 'Đổi mật khẩu, xác thực 2 bước',
+            onTap: () {
+              // TODO: Security settings
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Tính năng đang phát triển')),
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildAppInfo(double pix) {
-    return Padding(
-      padding: EdgeInsets.all(16 * pix),
+  Widget _buildAppInfoSection(double pix) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16 * pix),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Ứng dụng: Smart Farm',
-            style: TextStyle(
-              fontSize: 16 * pix,
-              fontFamily: 'BeVietnamPro',
+          Padding(
+            padding: EdgeInsets.all(20 * pix),
+            child: Text(
+              'Thông tin ứng dụng',
+              style: TextStyle(
+                fontSize: 18 * pix,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'BeVietnamPro',
+                color: AppColors.textDark,
+              ),
             ),
           ),
-          SizedBox(height: 8 * pix),
-          Text(
-            'Phiên bản: 1.0.0',
-            style: TextStyle(
-              fontSize: 14 * pix,
-              fontFamily: 'BeVietnamPro',
-            ),
+          Divider(height: 1, color: AppColors.borderGrey),
+          _buildSettingItem(
+            pix,
+            icon: Icons.info,
+            iconColor: Colors.green,
+            title: 'Smart Farm v1.0.0',
+            subtitle: 'Ứng dụng quản lý nông trại thông minh',
+            showArrow: false,
           ),
-          SizedBox(height: 8 * pix),
-          Text(
-            'Nhà phát triển: xAI',
-            style: TextStyle(
-              fontSize: 14 * pix,
-              fontFamily: 'BeVietnamPro',
-            ),
-          ),
-          SizedBox(height: 12 * pix),
-          ElevatedButton(
-            onPressed: () {
-              // TODO: Điều hướng đến trang hỗ trợ hoặc liên hệ
+          Divider(height: 1, color: AppColors.borderGrey),
+          _buildSettingItem(
+            pix,
+            icon: Icons.support_agent,
+            iconColor: Colors.cyan,
+            title: 'Hỗ trợ',
+            subtitle: 'Liên hệ đội ngũ hỗ trợ',
+            onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Liên hệ hỗ trợ: support@x.ai'),
-                  backgroundColor: Colors.green,
+                  content: Text('Liên hệ hỗ trợ: support@smartfarm.com'),
+                  backgroundColor: AppColors.primaryGreen,
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              padding: EdgeInsets.symmetric(
-                horizontal: 24 * pix,
-                vertical: 12 * pix,
+          ),
+          Divider(height: 1, color: AppColors.borderGrey),
+          _buildSettingItem(
+            pix,
+            icon: Icons.rate_review,
+            iconColor: Colors.amber,
+            title: 'Đánh giá ứng dụng',
+            subtitle: 'Chia sẻ trải nghiệm của bạn',
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Cảm ơn bạn đã sử dụng ứng dụng!')),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingItem(
+    double pix, {
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    String? subtitle,
+    VoidCallback? onTap,
+    bool showArrow = true,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20 * pix, vertical: 16 * pix),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10 * pix),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10 * pix),
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8 * pix),
+              child: Icon(
+                icon,
+                size: 24 * pix,
+                color: iconColor,
               ),
             ),
-            child: Text(
-              'Liên hệ hỗ trợ',
+            SizedBox(width: 16 * pix),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16 * pix,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'BeVietnamPro',
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    SizedBox(height: 2 * pix),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13 * pix,
+                        color: AppColors.textGrey,
+                        fontFamily: 'BeVietnamPro',
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (showArrow)
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16 * pix,
+                color: AppColors.textGrey,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton(double pix) {
+    return Container(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text('Đăng xuất'),
+              content: Text('Bạn có chắc chắn muốn đăng xuất?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Hủy'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Provider.of<AuthProvider>(context, listen: false).logout();
+                    Navigator.pop(context);
+                    // Navigate to login screen
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                  ),
+                  child:
+                      Text('Đăng xuất', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.red,
+          padding: EdgeInsets.symmetric(vertical: 16 * pix),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12 * pix),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.logout, color: Colors.white, size: 20 * pix),
+            SizedBox(width: 8 * pix),
+            Text(
+              'Đăng xuất',
               style: TextStyle(
                 fontSize: 16 * pix,
                 fontWeight: FontWeight.bold,
@@ -468,9 +593,134 @@ class _SettingScreenState extends State<SettingScreen>
                 color: Colors.white,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+
+  void _showEditProfileDialog() {
+    setState(() {
+      image = null;
+      nameController.text = "";
+    });
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final pix = MediaQuery.of(context).size.width / 375;
+            final user = Provider.of<AuthProvider>(context, listen: false).user;
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16 * pix),
+              ),
+              title: Text(
+                'Chỉnh sửa thông tin',
+                style: TextStyle(
+                  fontSize: 20 * pix,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'BeVietnamPro',
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Avatar picker
+                  InkWell(
+                    onTap: () => _pickImage(setDialogState),
+                    child: Container(
+                      width: 100 * pix,
+                      height: 100 * pix,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.primaryGreen,
+                          width: 2,
+                        ),
+                      ),
+                      child: image != null
+                          ? ClipOval(
+                              child: Image.file(
+                                File(image!.path),
+                                width: 100 * pix,
+                                height: 100 * pix,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : (user?.avatar != "" && user?.avatar != null
+                              ? ClipOval(
+                                  child: NetworkImageWidget(
+                                    url: "${_baseUrl}${user?.avatar}" ?? "",
+                                    width: 100,
+                                    height: 100,
+                                  ),
+                                )
+                              : Container(
+                                  width: 100 * pix,
+                                  height: 100 * pix,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color:
+                                        AppColors.primaryGreen.withOpacity(0.1),
+                                  ),
+                                  child: Icon(
+                                    Icons.camera_alt,
+                                    size: 40 * pix,
+                                    color: AppColors.primaryGreen,
+                                  ),
+                                )),
+                    ),
+                  ),
+                  SizedBox(height: 20 * pix),
+
+                  // Name input
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      labelText: 'Tên người dùng',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12 * pix),
+                      ),
+                      prefixIcon: Icon(Icons.person),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text('Hủy'),
+                      ),
+                    ),
+                    SizedBox(width: 8 * pix),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _updateProfile,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryGreen,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8 * pix),
+                          ),
+                        ),
+                        child: Text(
+                          'Lưu',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

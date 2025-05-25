@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_farm/provider/location_provider.dart';
 import 'package:smart_farm/provider/plant_provider.dart';
-import 'package:smart_farm/res/imagesSF/AppImages.dart';
 import 'package:smart_farm/widget/top_bar.dart';
 import 'package:intl/intl.dart';
 

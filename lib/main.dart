@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'package:smart_farm/provider/alert_settings_provider.dart';
 import 'package:smart_farm/provider/auth_provider.dart';
 import 'package:smart_farm/provider/location_provider.dart';
+import 'package:smart_farm/provider/notification_provider.dart';
 import 'package:smart_farm/provider/plant_provider.dart';
 import 'package:smart_farm/provider/sensor_provider.dart';
 import 'package:smart_farm/provider/care_task_provider.dart';
@@ -17,8 +19,13 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
+        ChangeNotifierProvider(
+            create: (_) => NotificationProvider()), // Thêm provider
+
         ChangeNotifierProvider(create: (_) => PlantProvider()),
         ChangeNotifierProvider(create: (_) => CareTaskProvider()),
+        ChangeNotifierProvider(
+            create: (_) => AlertSettingsProvider()), // Thêm provider
         ChangeNotifierProxyProvider<LocationProvider, SensorProvider>(
           create: (_) => SensorProvider(),
           update: (_, locationProvider, sensorProvider) {

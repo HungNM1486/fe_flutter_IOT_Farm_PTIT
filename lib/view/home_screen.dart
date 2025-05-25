@@ -568,39 +568,6 @@ class _HomeScreenState extends State<HomeScreen>
                     SizedBox(height: 6 * pix),
                     Row(
                       children: [
-                        Icon(Icons.scale,
-                            size: 14 * pix, color: AppColors.textGrey),
-                        SizedBox(width: 4 * pix),
-                        Expanded(
-                          child: Text(
-                            (plant.unit != null && plant.unit != "")
-                                ? 'Sản lượng: ${plant.unit}'
-                                : 'Chưa có sản lượng',
-                            style: TextStyle(
-                                fontSize: 13 * pix, color: AppColors.textGrey),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        SizedBox(width: 12 * pix),
-                        Icon(Icons.star, size: 14 * pix, color: Colors.amber),
-                        SizedBox(width: 4 * pix),
-                        Expanded(
-                          child: Text(
-                            (plant.rating != null && plant.rating != "")
-                                ? 'Chất lượng: ${plant.rating}'
-                                : 'Chưa có chất lượng',
-                            style: TextStyle(
-                                fontSize: 13 * pix, color: AppColors.textGrey),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 6 * pix),
-                    Row(
-                      children: [
                         Icon(Icons.note,
                             size: 14 * pix, color: AppColors.textGrey),
                         SizedBox(width: 4 * pix),

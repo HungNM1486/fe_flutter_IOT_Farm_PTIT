@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:smart_farm/models/sensor_model.dart';
 import 'package:smart_farm/provider/sensor_provider.dart';
 import 'package:smart_farm/res/imagesSF/AppImages.dart';
 import 'package:smart_farm/theme/app_colors.dart';

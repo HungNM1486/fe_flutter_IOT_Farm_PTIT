@@ -82,6 +82,34 @@ class SensorProvider with ChangeNotifier {
     ];
   }
 
+  void sendCameraCommand(String command) {
+    if (!_isConnected) {
+      print('MQTT not connected, cannot send camera command');
+      return;
+    }
+
+    try {
+      final cameraTopicCapture = 'iot/camera/ESP32CAM_001/capture';
+      final builder = MqttClientPayloadBuilder();
+      builder.addString(command);
+
+      _client?.publishMessage(
+        cameraTopicCapture,
+        MqttQos.atLeastOnce,
+        builder.payload!,
+        retain: false,
+      );
+
+      if (kDebugMode) {
+        print('Đã gửi lệnh camera: $command');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Lỗi khi gửi lệnh camera: $e');
+      }
+    }
+  }
+
   Future<void> _updateGardensFromLocations() async {
     if (_locationProvider == null) return;
 

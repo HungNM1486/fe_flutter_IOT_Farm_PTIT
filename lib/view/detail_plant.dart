@@ -838,7 +838,6 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
             _buildStatusSection(pix, plant),
             _buildPlantingDateSection(pix, plant),
             _buildLocationInfoSection(pix, plant),
-            _buildYieldAndQualitySection(pix, plant),
             if (plant.status == 'Đã thu hoạch')
               _buildHarvestInfoSection(pix, plant),
             _buildNotesSection(pix, plant),
@@ -1321,6 +1320,8 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
             ),
           ),
           SizedBox(height: 8 * pix),
+
+          // Ngày thu hoạch
           Row(
             children: [
               Expanded(
@@ -1349,6 +1350,14 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
                   ],
                 ),
               ),
+            ],
+          ),
+
+          SizedBox(height: 12 * pix),
+
+          // Sản lượng
+          Row(
+            children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1363,10 +1372,43 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
                     ),
                     SizedBox(height: 4 * pix),
                     Text(
-                      plant.unit ?? 'Chưa có dữ liệu',
+                      (plant.yieldAmount != null &&
+                              plant.yieldAmount! > 0 &&
+                              plant.unit != null)
+                          ? '${plant.yieldAmount} ${plant.unit}'
+                          : 'Chưa có dữ liệu',
                       style: TextStyle(
                         fontSize: 16 * pix,
                         fontFamily: 'BeVietnamPro',
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Chất lượng:',
+                      style: TextStyle(
+                        fontSize: 14 * pix,
+                        color: Colors.grey[600],
+                        fontFamily: 'BeVietnamPro',
+                      ),
+                    ),
+                    SizedBox(height: 4 * pix),
+                    Text(
+                      plant.rating != null && plant.rating!.isNotEmpty
+                          ? plant.rating!
+                          : 'Chưa có dữ liệu',
+                      style: TextStyle(
+                        fontSize: 16 * pix,
+                        fontFamily: 'BeVietnamPro',
+                        fontWeight: FontWeight.w600,
+                        color: _getQualityColor(plant.rating),
                       ),
                     ),
                   ],
@@ -1374,9 +1416,61 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
               ),
             ],
           ),
+
+          // Mô tả chất lượng
+          if (plant.qualityDescription != null &&
+              plant.qualityDescription!.isNotEmpty) ...[
+            SizedBox(height: 12 * pix),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Mô tả chất lượng:',
+                  style: TextStyle(
+                    fontSize: 14 * pix,
+                    color: Colors.grey[600],
+                    fontFamily: 'BeVietnamPro',
+                  ),
+                ),
+                SizedBox(height: 4 * pix),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(12 * pix),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(8 * pix),
+                    border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    plant.qualityDescription!,
+                    style: TextStyle(
+                      fontSize: 14 * pix,
+                      fontFamily: 'BeVietnamPro',
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  Color _getQualityColor(String? rating) {
+    if (rating == null || rating.isEmpty) return Colors.grey;
+
+    switch (rating) {
+      case 'Tốt':
+        return Colors.green[700]!;
+      case 'Trung bình':
+        return Colors.orange[700]!;
+      case 'Kém':
+        return Colors.red[700]!;
+      default:
+        return Colors.grey[700]!;
+    }
   }
 
   Widget _buildNotesSection(double pix, PlantModel plant) {
@@ -1615,35 +1709,6 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
             child: Text(
               'Mã vị trí: ${plant.locationId ?? "Chưa có"}',
               style: TextStyle(fontSize: 14 * pix, color: Colors.blueGrey),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildYieldAndQualitySection(double pix, PlantModel plant) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16 * pix, vertical: 4 * pix),
-      child: Row(
-        children: [
-          Icon(Icons.scale, size: 16 * pix, color: Colors.green),
-          SizedBox(width: 4 * pix),
-          Expanded(
-            child: Text(
-              'Sản lượng: ${plant.unit ?? "Chưa có"}',
-              style: TextStyle(fontSize: 14 * pix, color: Colors.green[700]),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          SizedBox(width: 12 * pix),
-          Icon(Icons.star, size: 16 * pix, color: Colors.amber),
-          SizedBox(width: 4 * pix),
-          Expanded(
-            child: Text(
-              'Chất lượng: ${plant.rating ?? "Chưa có"}',
-              style: TextStyle(fontSize: 14 * pix, color: Colors.amber[800]),
               overflow: TextOverflow.ellipsis,
             ),
           ),
