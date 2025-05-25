@@ -38,9 +38,12 @@ class WebSocketService {
 
   IO.Socket? _socket;
   bool _isConnected = false;
-  
+
   // Callback cho prediction results
   Function(PredictionResult)? _onPredictionReceived;
+
+  // Thêm callback cho notification
+  Function(Map<String, dynamic>)? _onNotificationReceived;
 
   bool get isConnected => _isConnected;
 
@@ -84,6 +87,14 @@ class WebSocketService {
         }
       });
 
+      _socket?.on('new_notification', (data) {
+        try {
+          log('Received new notification: ${data.toString()}');
+          _onNotificationReceived?.call(data);
+        } catch (e) {
+          log('Error parsing notification data: $e');
+        }
+      });
     } catch (e) {
       log('WebSocket connection error: $e');
     }
@@ -100,7 +111,13 @@ class WebSocketService {
     _onPredictionReceived = callback;
   }
 
+  // Thêm method này sau method onPredictionReceived:
+  void onNotificationReceived(Function(Map<String, dynamic>) callback) {
+    _onNotificationReceived = callback;
+  }
+
   void clearCallbacks() {
     _onPredictionReceived = null;
+    _onNotificationReceived = null;
   }
 }

@@ -61,6 +61,10 @@ class NotificationModel {
         return 'Cảnh báo ánh sáng';
       case 'gas_alert':
         return 'Cảnh báo khí gas';
+      case 'disease_detected':
+        return 'Phát hiện bệnh cây';
+      case 'care_task_reminder':
+        return 'Nhắc nhở công việc';
       default:
         return 'Thông báo';
     }
@@ -76,6 +80,10 @@ class NotificationModel {
         return Icons.wb_sunny;
       case 'gas_alert':
         return Icons.air;
+      case 'disease_detected':
+        return Icons.bug_report;
+      case 'care_task_reminder':
+        return Icons.schedule;
       default:
         return Icons.notifications;
     }
@@ -85,12 +93,14 @@ class NotificationModel {
     switch (type) {
       case 'temperature_alert':
         return Colors.red;
-      case 'soil_moisture_alert':
-        return Colors.blue;
       case 'light_intensity_alert':
         return Colors.orange;
       case 'gas_alert':
         return Colors.purple;
+      case 'disease_detected':
+        return Colors.red;
+      case 'care_task_reminder':
+        return Colors.blue;
       default:
         return Colors.grey;
     }

@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:smart_farm/models/plant_model.dart';
 import 'package:smart_farm/provider/plant_provider.dart';
+import 'package:smart_farm/provider/sensor_provider.dart'; // Added import
 import 'package:smart_farm/res/imagesSF/AppImages.dart';
 import 'package:smart_farm/utils/base_url.dart';
 import 'package:smart_farm/widget/top_bar.dart';
@@ -34,8 +35,11 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
 
   String sysImage = "";
   final _baseUrl = BaseUrl.baseUrl;
-  // Xóa biến mounted và sửa lại _plantProviderListener
   late VoidCallback? _plantProviderListener;
+
+  // Camera capture state
+  bool _isCapturing = false;
+
   // Các loại công việc chăm sóc
   final List<String> careTaskTypes = [
     'Bón phân',
@@ -47,8 +51,7 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
   ];
 
   // Trạng thái cây - thay đổi để có giá trị mặc định
-  String plantStatus =
-      'Đang tốt'; // Gán giá trị mặc định từ danh sách statusOptions
+  String plantStatus = 'Đang tốt';
   String oldplantStatus = 'Đang tốt';
   final List<String> statusOptions = [
     'Đang tốt',
@@ -64,14 +67,11 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
     _plantProvider = Provider.of<PlantProvider>(context, listen: false);
   }
 
-  // Cập nhật dispose()
   @override
   void dispose() {
-    // Gỡ bỏ listener khi widget bị hủy
     if (_plantProviderListener != null) {
       _plantProvider.removeListener(_plantProviderListener!);
     }
-    // Disconnect WebSocket
     _wsService.clearCallbacks();
 
     noteController.dispose();
@@ -85,10 +85,8 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
   void initState() {
     super.initState();
     _initializeData();
-    // Kết nối WebSocket
     _wsService.connect();
 
-    // Fetch care tasks khi vào trang chi tiết
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final careTaskProvider =
           Provider.of<CareTaskProvider>(context, listen: false);
@@ -101,26 +99,60 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
       final plantProvider = Provider.of<PlantProvider>(context, listen: false);
       plantProvider.fetchPlantById(widget.plantid);
 
-      // Định nghĩa listener
       _plantProviderListener = () {
         if (!plantProvider.loading && plantProvider.plant != null && mounted) {
           setState(() {
-            // Nếu status từ API là một trong các lựa chọn, sử dụng nó
             final apiStatus = plantProvider.plant?.status ?? '';
             if (statusOptions.contains(apiStatus)) {
               plantStatus = apiStatus;
               oldplantStatus = apiStatus;
             } else {
-              // Nếu không, vẫn giữ giá trị mặc định 'Đang tốt'
               print('Status từ API không khớp với các lựa chọn: $apiStatus');
             }
           });
         }
       };
 
-      // Đăng ký listener
       plantProvider.addListener(_plantProviderListener!);
     });
+  }
+
+  // Camera capture function
+  Future<void> _capturePhoto() async {
+    setState(() => _isCapturing = true);
+
+    try {
+      final sensorProvider =
+          Provider.of<SensorProvider>(context, listen: false);
+      sensorProvider.sendCameraCommand("capture");
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.camera_alt, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Đã gửi lệnh chụp ảnh đến ESP32-CAM'),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi khi gửi lệnh chụp ảnh: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+
+    // Reset capturing state after 3 seconds
+    await Future.delayed(Duration(seconds: 3));
+    if (mounted) {
+      setState(() => _isCapturing = false);
+    }
   }
 
   Future<void> _pickImage() async {
@@ -180,7 +212,6 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
   void _showDefaultImageSelector() {
     final pix = MediaQuery.of(context).size.width / 375;
 
-    // Danh sách các ảnh mặc định
     final List<Map<String, dynamic>> defaultImages = [
       {"image": AppImages.suhao, "name": "Su hào"},
       {"image": AppImages.khoaitay, "name": "Khoai tây"},
@@ -341,15 +372,6 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
                       _pickImage();
                     },
                   ),
-                  _buildImageOptionButton(
-                    icon: Icons.eco,
-                    label: 'Mẫu có sẵn',
-                    pix: pix,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showDefaultImageSelector();
-                    },
-                  ),
                 ],
               ),
               SizedBox(height: 20 * pix),
@@ -412,7 +434,7 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
       sysImage = "";
       nameController.clear();
       noteController.clear();
-      plantStatus = 'Đang tốt'; // Đặt lại giá trị mặc định
+      plantStatus = 'Đang tốt';
       oldplantStatus = 'Đang tốt';
       yieldController.clear();
       addressController.clear();
@@ -460,6 +482,11 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
                       ? _buildCarePlanSection(context)
                       : SizedBox(),
                   SizedBox(height: 20 * pix),
+                  // Added Camera Control Section
+                  plantStatus != 'Đã thu hoạch'
+                      ? _buildCameraControlSection(context)
+                      : SizedBox(),
+                  SizedBox(height: 20 * pix),
                   plantStatus != 'Đã thu hoạch'
                       ? _buildDiseasePredictionSection(context)
                       : SizedBox(),
@@ -469,6 +496,113 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
             ),
           )
         ],
+      ),
+    );
+  }
+
+  // New Camera Control Section
+  Widget _buildCameraControlSection(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final pix = size.width / 375;
+
+    return Container(
+      width: size.width,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16 * pix),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(16 * pix),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.camera_enhance, size: 24 * pix, color: Colors.blue),
+                SizedBox(width: 8 * pix),
+                Text(
+                  'Điều khiển Camera ESP32-CAM',
+                  style: TextStyle(
+                    fontSize: 18 * pix,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'BeVietnamPro',
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16 * pix),
+
+            // Camera capture button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isCapturing ? null : _capturePhoto,
+                icon: _isCapturing
+                    ? SizedBox(
+                        width: 20 * pix,
+                        height: 20 * pix,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Icon(Icons.camera_alt, size: 20 * pix),
+                label: Text(
+                  _isCapturing ? 'Đang chụp...' : 'Chụp ảnh ngay',
+                  style: TextStyle(
+                    fontSize: 16 * pix,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'BeVietnamPro',
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 12 * pix),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12 * pix),
+                  ),
+                ),
+              ),
+            ),
+
+            SizedBox(height: 12 * pix),
+
+            // Info text
+            Container(
+              padding: EdgeInsets.all(12 * pix),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8 * pix),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16 * pix, color: Colors.blue),
+                  SizedBox(width: 8 * pix),
+                  Expanded(
+                    child: Text(
+                      'ESP32-CAM sẽ chụp ảnh và tự động phân tích bệnh cây bằng AI',
+                      style: TextStyle(
+                        fontSize: 13 * pix,
+                        color: Colors.blue[700],
+                        fontFamily: 'BeVietnamPro',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -698,7 +832,7 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
                   widget.plantid,
                   nameController.text,
                   selectedType,
-                  selectedDate, // Đúng tên và kiểu
+                  selectedDate,
                   noteController.text,
                 );
                 Navigator.pop(context);
@@ -791,7 +925,7 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
                   task.id,
                   name: nameController.text,
                   type: selectedType,
-                  scheduledDate: selectedDate, // Đúng tên trường
+                  scheduledDate: selectedDate,
                   note: noteController.text,
                 );
                 Navigator.pop(context);
@@ -1006,14 +1140,11 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
   }
 
   Widget _buildPlantImage(double pix, double size, PlantModel plant) {
-    // Sử dụng giá trị mặc định chuỗi rỗng nếu image là null
     String img = plant.image ?? "";
     bool sys = false;
 
-    // Xử lý an toàn hơn với chuỗi
     if (img.isNotEmpty && img.length > 1) {
       if (img[1] == 'd') {
-        // Đảm bảo độ dài đủ trước khi thực hiện substring
         if (img.length >= 17) {
           img = img.substring(17);
           sys = true;
@@ -1043,10 +1174,8 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
         );
       }
 
-      // Nếu có ảnh từ model
       if (img.isNotEmpty) {
         if (sys) {
-          // Ảnh hệ thống (asset)
           return ClipRRect(
             borderRadius: BorderRadius.circular(12 * pix),
             child: Image.asset(
@@ -1061,7 +1190,6 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
             ),
           );
         } else {
-          // Ảnh từ server
           return ClipRRect(
             borderRadius: BorderRadius.circular(12 * pix),
             child: Image.network(
@@ -1078,7 +1206,6 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
         }
       }
 
-      // Nếu không có ảnh nào, kiểm tra sysImg
       if (plant.sysImg != null && plant.sysImg!.isNotEmpty) {
         return ClipRRect(
           borderRadius: BorderRadius.circular(12 * pix),
@@ -1209,8 +1336,7 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
               : Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: 12 * pix,
-                    vertical:
-                        10 * pix, // Thêm padding dọc để cải thiện giao diện
+                    vertical: 10 * pix,
                   ),
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey.withOpacity(0.5)),
@@ -1320,8 +1446,6 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
             ),
           ),
           SizedBox(height: 8 * pix),
-
-          // Ngày thu hoạch
           Row(
             children: [
               Expanded(
@@ -1352,10 +1476,7 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
               ),
             ],
           ),
-
           SizedBox(height: 12 * pix),
-
-          // Sản lượng
           Row(
             children: [
               Expanded(
@@ -1416,8 +1537,6 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
               ),
             ],
           ),
-
-          // Mô tả chất lượng
           if (plant.qualityDescription != null &&
               plant.qualityDescription!.isNotEmpty) ...[
             SizedBox(height: 12 * pix),
@@ -1660,15 +1779,16 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
     required String label,
     required double pix,
     required VoidCallback onTap,
+    Color? color,
   }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12 * pix),
       child: Container(
-        width: 100 * pix,
+        width: 80 * pix,
         padding: EdgeInsets.all(16 * pix),
         decoration: BoxDecoration(
-          color: Colors.green.withOpacity(0.1),
+          color: (color ?? Colors.green).withOpacity(0.1),
           borderRadius: BorderRadius.circular(12 * pix),
         ),
         child: Column(
@@ -1676,17 +1796,18 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
           children: [
             Icon(
               icon,
-              size: 36 * pix,
-              color: Colors.green,
+              size: 32 * pix,
+              color: color ?? Colors.green,
             ),
             SizedBox(height: 8 * pix),
             Text(
               label,
               style: TextStyle(
-                fontSize: 14 * pix,
+                fontSize: 12 * pix,
                 fontWeight: FontWeight.w500,
                 fontFamily: 'BeVietnamPro',
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

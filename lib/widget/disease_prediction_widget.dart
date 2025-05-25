@@ -32,12 +32,13 @@ class _DiseasePredictionWidgetState extends State<DiseasePredictionWidget>
   void initState() {
     super.initState();
     _initWebSocket();
+    _wsService.onNotificationReceived(_onNotificationReceived);
   }
 
   @override
   void dispose() {
     _connectionTimer?.cancel();
-    _wsService.clearCallbacks();
+    _wsService.clearCallbacks(); // Đảm bảo clear callbacks trước
     super.dispose();
   }
 
@@ -55,22 +56,122 @@ class _DiseasePredictionWidgetState extends State<DiseasePredictionWidget>
     });
   }
 
-  void _onPredictionReceived(PredictionResult result) {
-    if (mounted) {
-      setState(() {
-        _predictions.insert(0, result);
-        // Giữ tối đa 10 kết quả
-        if (_predictions.length > 10) {
-          _predictions.removeRange(10, _predictions.length);
-        }
-      });
+  void _onNotificationReceived(Map<String, dynamic> data) {
+    if (!mounted) return; // Kiểm tra mounted đầu tiên
 
-      // Hiển thị thông báo
-      _showPredictionNotification(result);
+    if (data['type'] == 'disease_detected') {
+      _showDiseaseAlert(data['message']);
     }
   }
 
+  void _showDiseaseAlert(String message) {
+    if (!mounted) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) {
+          final pix = MediaQuery.of(context).size.width / 375;
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16 * pix),
+            ),
+            title: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded,
+                    color: Colors.red, size: 24 * pix),
+                SizedBox(width: 8 * pix),
+                Text(
+                  'Cảnh báo bệnh cây!',
+                  style: TextStyle(
+                    fontSize: 18 * pix,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+              ],
+            ),
+            content: Container(
+              padding: EdgeInsets.symmetric(vertical: 8 * pix),
+              child: Text(
+                message,
+                style: TextStyle(fontSize: 16 * pix),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Đóng'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: Text('Đã hiểu', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
+      );
+
+      // Cũng kiểm tra mounted cho SnackBar
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.warning, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(child: Text(message)),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+    });
+
+    // Hiển thị SnackBar bổ sung
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.warning, color: Colors.white),
+            SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'Xem',
+          textColor: Colors.white,
+          onPressed: () {
+            // Có thể navigate đến trang notification
+          },
+        ),
+      ),
+    );
+  }
+
+  void _onPredictionReceived(PredictionResult result) {
+    if (!mounted) return; // Thêm kiểm tra mounted đầu tiên
+
+    setState(() {
+      _predictions.insert(0, result);
+      if (_predictions.length > 10) {
+        _predictions.removeRange(10, _predictions.length);
+      }
+    });
+
+    _showPredictionNotification(result);
+  }
+
   void _showPredictionNotification(PredictionResult result) {
+    if (!mounted) return; // Thêm kiểm tra mounted
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -90,7 +191,9 @@ class _DiseasePredictionWidgetState extends State<DiseasePredictionWidget>
         action: SnackBarAction(
           label: 'Xem',
           textColor: Colors.white,
-          onPressed: () => _showDetailDialog(result),
+          onPressed: () {
+            if (mounted) _showDetailDialog(result);
+          },
         ),
       ),
     );
