@@ -11,6 +11,8 @@ import 'package:smart_farm/widget/top_bar.dart';
 import 'package:intl/intl.dart';
 import 'package:smart_farm/models/care_task_model.dart';
 import 'package:smart_farm/provider/care_task_provider.dart';
+import 'package:smart_farm/widget/disease_prediction_widget.dart';
+import 'package:smart_farm/services/websocket_service.dart';
 
 class DetailPlantScreen extends StatefulWidget {
   final String plantid;
@@ -27,6 +29,9 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
   TextEditingController addressController = TextEditingController();
   XFile? _selectedImage;
   final ImagePicker _picker = ImagePicker();
+
+  final WebSocketService _wsService = WebSocketService();
+
   String sysImage = "";
   final _baseUrl = BaseUrl.baseUrl;
   // Xóa biến mounted và sửa lại _plantProviderListener
@@ -59,12 +64,16 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
     _plantProvider = Provider.of<PlantProvider>(context, listen: false);
   }
 
+  // Cập nhật dispose()
   @override
   void dispose() {
     // Gỡ bỏ listener khi widget bị hủy
     if (_plantProviderListener != null) {
       _plantProvider.removeListener(_plantProviderListener!);
     }
+    // Disconnect WebSocket
+    _wsService.clearCallbacks();
+
     noteController.dispose();
     yieldController.dispose();
     nameController.dispose();
@@ -76,6 +85,9 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
   void initState() {
     super.initState();
     _initializeData();
+    // Kết nối WebSocket
+    _wsService.connect();
+
     // Fetch care tasks khi vào trang chi tiết
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final careTaskProvider =
@@ -1589,241 +1601,7 @@ class DetailPlantScreenState extends State<DetailPlantScreen> {
   }
 
   Widget _buildDiseasePredictionSection(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final pix = size.width / 375;
-
-    return Container(
-      width: size.width,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16 * pix),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.all(16 * pix),
-            child: Text(
-              "Dự đoán bệnh cây",
-              style: TextStyle(
-                fontFamily: 'BeVietnamPro',
-                fontSize: 18 * pix,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Divider(height: 1, thickness: 1, color: Colors.grey.withOpacity(0.2)),
-          GestureDetector(
-            onTap: () => _showDiseaseScanOptions(),
-            child: Container(
-              margin: EdgeInsets.all(16 * pix),
-              height: 180 * pix,
-              width: 180 * pix,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(16 * pix),
-                border: Border.all(
-                  color: Colors.grey.withOpacity(0.5),
-                  width: 1,
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.add_a_photo,
-                    size: 48 * pix,
-                    color: Colors.grey[600],
-                  ),
-                  SizedBox(height: 16 * pix),
-                  Text(
-                    'Chụp ảnh để phân tích',
-                    style: TextStyle(
-                      fontSize: 16 * pix,
-                      color: Colors.grey[700],
-                      fontFamily: 'BeVietnamPro',
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(16 * pix),
-            child: ElevatedButton.icon(
-              icon: Icon(Icons.healing),
-              label: Text('Dự đoán bệnh'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(
-                  horizontal: 24 * pix,
-                  vertical: 12 * pix,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8 * pix),
-                ),
-              ),
-              onPressed: () {
-                _showDiseaseScanOptions();
-              },
-            ),
-          ),
-          SizedBox(height: 16 * pix),
-        ],
-      ),
-    );
-  }
-
-  void _showDiseaseScanOptions() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        final pix = MediaQuery.of(context).size.width / 375;
-        return Container(
-          padding: EdgeInsets.all(20 * pix),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Phân tích bệnh cây',
-                style: TextStyle(
-                  fontSize: 18 * pix,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'BeVietnamPro',
-                ),
-              ),
-              SizedBox(height: 20 * pix),
-              Text(
-                'Chụp ảnh lá cây bị bệnh để phân tích',
-                style: TextStyle(
-                  fontSize: 14 * pix,
-                  color: Colors.grey[600],
-                  fontFamily: 'BeVietnamPro',
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 20 * pix),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildImageOptionButton(
-                    icon: Icons.camera_alt,
-                    label: 'Chụp ảnh',
-                    pix: pix,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showDiseaseAnalysisResult();
-                    },
-                  ),
-                  _buildImageOptionButton(
-                    icon: Icons.photo_library,
-                    label: 'Thư viện',
-                    pix: pix,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showDiseaseAnalysisResult();
-                    },
-                  ),
-                ],
-              ),
-              SizedBox(height: 20 * pix),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showDiseaseAnalysisResult() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final pix = MediaQuery.of(context).size.width / 375;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16 * pix),
-          ),
-          title: Text(
-            'Kết quả phân tích',
-            style: TextStyle(
-              fontSize: 18 * pix,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'BeVietnamPro',
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 200 * pix,
-                height: 150 * pix,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(8 * pix),
-                ),
-                child: Icon(
-                  Icons.image,
-                  size: 48 * pix,
-                  color: Colors.grey,
-                ),
-              ),
-              SizedBox(height: 16 * pix),
-              Text(
-                'Phát hiện bệnh héo xanh vi khuẩn',
-                style: TextStyle(
-                  fontSize: 16 * pix,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'BeVietnamPro',
-                  color: Colors.red,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 8 * pix),
-              Text(
-                'Mức độ nhiễm: Trung bình\nKhuyến nghị: Phun thuốc kháng khuẩn và tăng cường thoát nước',
-                style: TextStyle(
-                  fontSize: 14 * pix,
-                  fontFamily: 'BeVietnamPro',
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Đóng',
-                style: TextStyle(color: Colors.grey[700]),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-              ),
-              child: Text(
-                'Thêm vào kế hoạch',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        );
-      },
-    );
+    return DiseasePredictionWidget(plantId: widget.plantid);
   }
 
   Widget _buildLocationInfoSection(double pix, PlantModel plant) {

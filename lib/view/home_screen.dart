@@ -6,6 +6,7 @@ import 'package:smart_farm/provider/plant_provider.dart';
 import 'package:smart_farm/utils/base_url.dart';
 import 'package:smart_farm/view/add_plant_screen.dart';
 import 'package:smart_farm/view/detail_plant.dart';
+import 'package:smart_farm/view/history_screen.dart';
 import 'package:smart_farm/widget/bottom_bar.dart';
 import 'package:smart_farm/theme/app_colors.dart';
 import 'package:smart_farm/widget/network_img.dart';
@@ -51,14 +52,10 @@ class _HomeScreenState extends State<HomeScreen>
   // Lọc cây trồng trực tiếp từ PlantProvider
   List<PlantModel> get filteredPlants {
     final plantProvider = Provider.of<PlantProvider>(context, listen: false);
-    // Lọc loại bỏ cây đã thu hoạch
-    final notHarvested = plantProvider.plants
-        .where((plant) => (plant.status ?? '').trim() != 'Đã thu hoạch')
-        .toList();
     if (searchController.text.isEmpty) {
-      return notHarvested;
+      return plantProvider.plants;
     }
-    return notHarvested
+    return plantProvider.plants
         .where((plant) =>
             (plant.name ?? '')
                 .toLowerCase()
@@ -83,6 +80,28 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         child: Stack(
           children: [
+            Icon(Icons.eco, size: 16 * pix, color: Colors.green),
+            SizedBox(width: 4 * pix),
+            Text(
+              'Cây đang trồng',
+              style: TextStyle(
+                fontSize: 14 * pix,
+                color: Colors.green[700],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Spacer(),
+            TextButton.icon(
+              icon: Icon(Icons.history, size: 16 * pix),
+              label: Text('Lịch sử thu hoạch'),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const HistoryScreen()),
+                );
+              },
+            ),
             Consumer<PlantProvider>(builder: (context, plantProvider, child) {
               if (plantProvider.loading) {
                 return const Center(
@@ -204,6 +223,12 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       ),
     );
+  }
+
+  void _loadPlants() {
+    final plantProvider = Provider.of<PlantProvider>(context, listen: false);
+    // Chỉ lấy cây chưa thu hoạch (harvested = false)
+    plantProvider.fetchPlantsByUser(harvested: false);
   }
 
   Widget _buildHeader(Size size, double pix) {

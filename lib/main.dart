@@ -7,6 +7,7 @@ import 'package:smart_farm/provider/plant_provider.dart';
 import 'package:smart_farm/provider/sensor_provider.dart';
 import 'package:smart_farm/provider/care_task_provider.dart';
 import 'package:smart_farm/view/login_screen.dart';
+import 'package:smart_farm/services/websocket_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,13 +27,23 @@ void main() async {
           },
         ),
       ],
-      child: const MyApp(),
+      child: MyApp(),
     ),
   );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Khởi tạo WebSocket global
+    WebSocketService().connect();
+  }
 
   @override
   Widget build(BuildContext context) {

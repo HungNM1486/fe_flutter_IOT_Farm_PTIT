@@ -57,7 +57,11 @@ class PlantProvider with ChangeNotifier {
   }
 
   Future<bool> fetchPlantsByLocation(String locationId,
-      {int page = 1, int limit = 10, String? status, String? search}) async {
+      {int page = 1,
+      int limit = 10,
+      String? status,
+      String? search,
+      bool harvested = false}) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");
     if (token == null) {
@@ -68,10 +72,19 @@ class PlantProvider with ChangeNotifier {
     notifyListeners();
     print('Fetching plants...');
     _plants = [];
+
     try {
-      String url = '$baseUrl/api/plants/$locationId?page=$page&limit=$limit';
+      String url;
+      if (harvested) {
+        url =
+            '$baseUrl/api/plants/$locationId/harvested?page=$page&limit=$limit';
+      } else {
+        url = '$baseUrl/api/plants/$locationId/plants?page=$page&limit=$limit';
+      }
+
       if (status != null && status.isNotEmpty) url += '&status=$status';
       if (search != null && search.isNotEmpty) url += '&search=$search';
+
       final response = await http.get(
         Uri.parse(url),
         headers: {
@@ -79,9 +92,10 @@ class PlantProvider with ChangeNotifier {
           'Authorization': 'Bearer $token',
         },
       );
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         final body = json.decode(response.body);
-        final List<dynamic> data = body['data']['data'] ?? body['data'];
+        final List<dynamic> data = body['data']['plants'] ?? body['data'];
         _plants = data.map((plant) => PlantModel.fromJson(plant)).toList();
         _loading = false;
         notifyListeners();
@@ -267,10 +281,10 @@ class PlantProvider with ChangeNotifier {
     String? note,
     String? plantingDate,
     String? address,
-    String? yieldAmount, // thêm
-    String? yieldUnit, // thêm
-    String? qualityRating, // thêm
-    String? qualityDescription, // thêm
+    String? yieldAmount,
+    String? yieldUnit,
+    String? qualityRating,
+    String? qualityDescription,
     bool? removeImage,
   }) async {
     final prefs = await SharedPreferences.getInstance();
@@ -286,8 +300,10 @@ class PlantProvider with ChangeNotifier {
     _loading = true;
     notifyListeners();
     print('Updating plant...');
+
     final dio = Dio();
     final formData = FormData();
+
     if (name != null) formData.fields.add(MapEntry('name', name));
     if (status != null) formData.fields.add(MapEntry('status', status));
     if (note != null) formData.fields.add(MapEntry('note', note));
@@ -296,6 +312,8 @@ class PlantProvider with ChangeNotifier {
     if (address != null) formData.fields.add(MapEntry('address', address));
     if (removeImage == true)
       formData.fields.add(MapEntry('removeImage', 'true'));
+
+    // Harvest fields
     if (yieldAmount != null)
       formData.fields.add(MapEntry('yield[amount]', yieldAmount));
     if (yieldUnit != null)
@@ -304,6 +322,7 @@ class PlantProvider with ChangeNotifier {
       formData.fields.add(MapEntry('quality[rating]', qualityRating));
     if (qualityDescription != null)
       formData.fields.add(MapEntry('quality[description]', qualityDescription));
+
     if (image != null) {
       final filename = image.path.split('/').last;
       if (!await image.exists()) {
@@ -330,6 +349,7 @@ class PlantProvider with ChangeNotifier {
         ),
       );
     }
+
     final uri = Uri.parse('$baseUrl/api/plants/$plantId');
     try {
       final response = await dio.put(
@@ -360,8 +380,8 @@ class PlantProvider with ChangeNotifier {
     }
   }
 
-  // Lấy danh sách cây theo user
-  Future<bool> fetchPlantsByUser() async {
+  // Lấy danh sách cây theo user (chỉ non-harvested)
+  Future<bool> fetchPlantsByUser({bool harvested = false}) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");
     if (token == null) {
@@ -370,16 +390,19 @@ class PlantProvider with ChangeNotifier {
     }
     _loading = true;
     notifyListeners();
-    print('Fetching plants by user...');
+    print('Fetching plants by user (harvested: $harvested)...');
     _plants = [];
+
     try {
+      final endpoint = harvested ? '/api/plants/harvested' : '/api/plants/all';
       final response = await http.get(
-        Uri.parse('$baseUrl/api/plants/all'),
+        Uri.parse('$baseUrl$endpoint'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
       );
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         final body = json.decode(response.body);
         final List<dynamic> data = body['data']['plants'] ?? body['data'];
@@ -388,8 +411,8 @@ class PlantProvider with ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        print('Failed to load plants by user: \\${response.statusCode}');
-        print('Response body: \\${response.body}');
+        print('Failed to load plants by user: ${response.statusCode}');
+        print('Response body: ${response.body}');
         _loading = false;
         notifyListeners();
         throw Exception('Failed to load plants by user');
